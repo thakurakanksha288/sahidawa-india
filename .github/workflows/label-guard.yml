@@ -28,15 +28,23 @@ jobs:
                       const repoOwner = context.repo.owner;
                       const repoName = context.repo.repo;
 
-                      const allowedActors = [
-                        repoOwner,
-                        'github-actions[bot]',
-                      ];
+                      if (actor === 'github-actions[bot]' || actor === repoOwner) {
+                        console.log(`✅ Label "${label}" added by authorized actor @${actor}`);
+                        return;
+                      }
 
-                      if (!allowedActors.includes(actor)) {
-                        console.log(`❌ Unauthorized actor @${actor} added label "${label}". Removing...`);
+                      try {
+                        const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+                          owner: repoOwner,
+                          repo: repoName,
+                          username: actor,
+                        });
 
-                        try {
+                        const isAllowed = ['admin', 'write'].includes(permission.permission);
+
+                        if (!isAllowed) {
+                          console.log(`❌ Unauthorized actor @${actor} added label "${label}". Removing...`);
+                          
                           await github.rest.issues.removeLabel({
                             owner: repoOwner,
                             repo: repoName,
@@ -48,11 +56,11 @@ jobs:
                             owner: repoOwner,
                             repo: repoName,
                             issue_number: issueNumber,
-                            body: `⚠️ Label \`${label}\` was removed. Only **@${repoOwner}** or GitHub bots can add labels.`
+                            body: `⚠️ Label \`${label}\` was removed. Only repository maintainers can add labels.`
                           });
-                        } catch (error) {
-                          console.error(`🚨 Failed to remove label or comment: ${error.message}`);
+                        } else {
+                          console.log(`✅ Label "${label}" added by authorized maintainer @${actor}`);
                         }
-                      } else {
-                        console.log(`✅ Label "${label}" added by authorized actor @${actor}`);
+                      } catch (error) {
+                        console.error(`🚨 Failed to check permissions or remove label: ${error.message}`);
                       }
