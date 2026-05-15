@@ -7,15 +7,26 @@ import './globals.css';
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: 'SahiDawa',
+  title: 'SahiDawa — Verify Your Medicine',
   description:
-    "India's First Open-Source Citizen Medicine Verifier & Rural Health Bridge",
-
+    "India's first open-source medicine verification platform. Scan, verify, and trust your medicines.",
   manifest: '/manifest.json',
-
   icons: {
     icon: '/icons/icon-192.png',
     apple: '/icons/icon-192.png',
+  },
+  openGraph: {
+    title: 'SahiDawa — Verify Your Medicine',
+    description:
+      "India's first open-source medicine verification platform. Scan, verify, and trust your medicines.",
+    url: 'https://sahidawa.in',
+    siteName: 'SahiDawa',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SahiDawa — Verify Your Medicine',
+    description:
+      "India's first open-source medicine verification platform. Scan, verify, and trust your medicines.",
   },
 };
 
