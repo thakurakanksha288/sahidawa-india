@@ -22,6 +22,7 @@ class FakeTable:
         self.pending_update = None
         self.eq_filters = []
         self.operation = None
+        self.limit_value = None
 
     def upsert(self, payload, on_conflict=None):
         self.operation = "upsert"
@@ -48,15 +49,33 @@ class FakeTable:
         self.eq_filters.append((column, value))
         return self
 
+    def limit(self, value):
+        self.limit_value = value
+        return self
+
     def execute(self):
         if self.operation == "select":
-            return FakeExecuteResponse(self.client.retry_rows)
+            rows = self.client.retry_rows
+            for column, value in self.eq_filters:
+                rows = [row for row in rows if row.get(column) == value]
+            if self.limit_value is not None:
+                rows = rows[: self.limit_value]
+            return FakeExecuteResponse(rows)
 
         if self.operation == "update":
+            row_id = next((value for column, value in self.eq_filters if column == "id"), None)
+            if row_id in self.client.update_fail_ids:
+                raise Exception("503: retry metadata update failed")
             self.client.update_calls.append((self.name, self.pending_update, self.eq_filters))
+            for row in self.client.retry_rows:
+                if row.get("id") == row_id:
+                    row.update(self.pending_update)
             return FakeExecuteResponse()
 
         if self.operation == "insert":
+            payload = dict(self.pending_payload)
+            payload.setdefault("id", f"insert-{len(self.client.retry_rows) + 1}")
+            self.client.retry_rows.append(payload)
             return FakeExecuteResponse()
 
         if self.operation == "upsert":
@@ -81,11 +100,13 @@ class FakeSupabaseClient:
         fail_generic_names=None,
         retry_rows=None,
         errors_by_generic_name=None,
+        update_fail_ids=None,
     ):
         self.fail_batches = fail_batches
         self.fail_generic_names = set(fail_generic_names or [])
         self.errors_by_generic_name = errors_by_generic_name or {}
         self.retry_rows = retry_rows or []
+        self.update_fail_ids = set(update_fail_ids or [])
         self.upsert_calls = []
         self.insert_calls = []
         self.update_calls = []
@@ -217,11 +238,15 @@ def test_retry_failed_rows_updates_successful_and_failed_retry_records(tmp_path)
     retry_rows = [
         {
             "id": "row-1",
+            "pipeline_name": "janaushadhi",
+            "status": "failed",
             "row_payload": {"generic_name": "Paracetamol", "strength": "500mg", "dosage_form": "Tablet"},
             "attempt_count": 1,
         },
         {
             "id": "row-2",
+            "pipeline_name": "janaushadhi",
+            "status": "failed",
             "row_payload": {"generic_name": "Bad Float", "strength": "not-a-float", "dosage_form": "Tablet"},
             "attempt_count": 2,
         },
@@ -241,3 +266,43 @@ def test_retry_failed_rows_updates_successful_and_failed_retry_records(tmp_path)
     assert updates[1]["status"] == "failed"
     assert updates[1]["attempt_count"] == 3
     assert updates[1]["error_category"] == "duplicate_key"
+
+
+def test_retry_success_is_counted_only_after_retry_metadata_update_succeeds(tmp_path):
+    retry_rows = [
+        {
+            "id": "row-1",
+            "pipeline_name": "janaushadhi",
+            "status": "failed",
+            "row_payload": {"generic_name": "Paracetamol", "strength": "500mg", "dosage_form": "Tablet"},
+            "attempt_count": 1,
+        },
+    ]
+    client = FakeSupabaseClient(retry_rows=retry_rows, update_fail_ids={"row-1"})
+    loader = make_loader(client, tmp_path)
+
+    stats = loader.retry_failed_rows()
+
+    assert stats["total"] == 1
+    assert stats["inserted"] == 0
+    assert stats["failed"] == 1
+
+
+def test_persist_failure_updates_existing_retry_row_for_same_payload(tmp_path):
+    client = FakeSupabaseClient(fail_generic_names={"Bad Float"})
+    loader = make_loader(client, tmp_path)
+    df = pd.DataFrame(
+        [
+            {"generic_name": "Bad Float", "strength": "not-a-float", "dosage_form": "Tablet"},
+        ]
+    )
+
+    first_stats = loader.load(df)
+    second_stats = loader.load(df)
+
+    assert first_stats["failed"] == 1
+    assert second_stats["failed"] == 1
+    assert len(client.insert_calls) == 1
+    retry_updates = [call[1] for call in client.update_calls if call[0] == "etl_failed_rows"]
+    assert retry_updates[-1]["attempt_count"] == 2
+    assert len(client.retry_rows) == 1

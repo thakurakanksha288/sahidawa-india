@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS etl_failed_rows (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     pipeline_name VARCHAR(100) NOT NULL,
     source_table VARCHAR(100) NOT NULL,
+    row_fingerprint VARCHAR(64) NOT NULL,
     row_payload JSONB NOT NULL,
     medicine_name VARCHAR(500),
     unresolved_value TEXT,
@@ -20,3 +21,6 @@ CREATE INDEX IF NOT EXISTS idx_etl_failed_rows_status
 
 CREATE INDEX IF NOT EXISTS idx_etl_failed_rows_pipeline_name
     ON etl_failed_rows(pipeline_name);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_etl_failed_rows_unique_logical_row
+    ON etl_failed_rows(pipeline_name, source_table, row_fingerprint);

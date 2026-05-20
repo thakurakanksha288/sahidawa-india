@@ -28,6 +28,7 @@ import re
 import time
 from collections import Counter
 from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
 
 import pandas as pd
@@ -166,7 +167,6 @@ class SupabaseLoader:
 
             try:
                 self._upsert_payloads([row_payload], table)
-                inserted += 1
                 self._update_retry_row(
                     retry_row["id"],
                     {
@@ -176,11 +176,12 @@ class SupabaseLoader:
                         "updated_at": self._utc_now(),
                     },
                 )
+                inserted += 1
             except Exception as e:
                 failure = self._build_failure(row_payload, row_index, e)
                 failures.append(failure)
                 self._log_failure(failure)
-                self._update_retry_row(
+                self._safe_update_retry_row(
                     retry_row["id"],
                     {
                         "status": "failed",
@@ -237,6 +238,7 @@ class SupabaseLoader:
             "db_error_code": db_error_code,
             "error_category": self._categorize_error(error_message, db_error_code),
             "error_message": error_message,
+            "row_fingerprint": self._row_fingerprint(payload),
             "row_payload": payload,
         }
 
@@ -245,27 +247,53 @@ class SupabaseLoader:
         print(json.dumps(log_payload, sort_keys=True, default=str))
 
     def _persist_failure(self, failure: dict, source_table: str) -> None:
-        retry_payload = {
-            "pipeline_name": self.pipeline_name,
-            "source_table": source_table,
-            "row_payload": failure["row_payload"],
-            "medicine_name": failure["medicine_name"],
-            "unresolved_value": failure["unresolved_value"],
-            "error_category": failure["error_category"],
-            "db_error_code": failure["db_error_code"],
-            "error_message": failure["error_message"],
-            "attempt_count": 1,
-            "status": "failed",
-            "last_attempt_at": self._utc_now(),
-        }
-
         try:
-            self.client.table(RETRY_TABLE).insert(retry_payload).execute()
+            existing_retry_row = self._find_retry_row(failure, source_table)
+            attempt_count = int(existing_retry_row.get("attempt_count") or 0) + 1 if existing_retry_row else 1
+            retry_payload = {
+                "pipeline_name": self.pipeline_name,
+                "source_table": source_table,
+                "row_fingerprint": failure["row_fingerprint"],
+                "row_payload": failure["row_payload"],
+                "medicine_name": failure["medicine_name"],
+                "unresolved_value": failure["unresolved_value"],
+                "error_category": failure["error_category"],
+                "db_error_code": failure["db_error_code"],
+                "error_message": failure["error_message"],
+                "attempt_count": attempt_count,
+                "status": "failed",
+                "last_attempt_at": self._utc_now(),
+                "updated_at": self._utc_now(),
+            }
+
+            if existing_retry_row:
+                self._update_retry_row(existing_retry_row["id"], retry_payload)
+            else:
+                self.client.table(RETRY_TABLE).insert(retry_payload).execute()
         except Exception as e:
             print(f"[Loader] ⚠️ Failed to persist retry row: {e}")
 
+    def _find_retry_row(self, failure: dict, source_table: str) -> dict | None:
+        response = (
+            self.client.table(RETRY_TABLE)
+            .select("id, attempt_count")
+            .eq("pipeline_name", self.pipeline_name)
+            .eq("source_table", source_table)
+            .eq("row_fingerprint", failure["row_fingerprint"])
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(response, "data", None) or []
+        return rows[0] if rows else None
+
     def _update_retry_row(self, row_id: str, payload: dict) -> None:
         self.client.table(RETRY_TABLE).update(payload).eq("id", row_id).execute()
+
+    def _safe_update_retry_row(self, row_id: str, payload: dict) -> None:
+        try:
+            self._update_retry_row(row_id, payload)
+        except Exception as e:
+            print(f"[Loader] ⚠️ Failed to update retry row {row_id}: {e}")
 
     def _export_failed_rows(self, failures: list[dict]) -> str | None:
         if not failures:
@@ -286,6 +314,7 @@ class SupabaseLoader:
                     "db_error_code": failure["db_error_code"],
                     "error_category": failure["error_category"],
                     "error_message": failure["error_message"],
+                    "row_fingerprint": failure["row_fingerprint"],
                 }
             )
             rows.append(row)
@@ -342,6 +371,15 @@ class SupabaseLoader:
     def _extract_db_error_code(self, error_message: str) -> str | None:
         match = re.search(r"\b([0-9A-Z]{5})\b", error_message)
         return match.group(1) if match else None
+
+    def _row_fingerprint(self, payload: dict) -> str:
+        encoded_payload = json.dumps(
+            payload,
+            default=str,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        return sha256(encoded_payload.encode("utf-8")).hexdigest()
 
     def _categorize_error(self, error_message: str, db_error_code: str | None) -> str:
         lower = error_message.lower()
