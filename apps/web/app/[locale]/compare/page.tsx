@@ -25,7 +25,6 @@ async function searchMedicines(query: string): Promise<Medicine[]> {
         console.error(error.message);
         return [];
     }
-
     return (data ?? []).map((row) => mapMedicineRow(row as Record<string, unknown>));
 }
 
