@@ -62,8 +62,10 @@ export async function submitReport(
         method: "POST",
         headers: {
             "Content-Type": "application/json",
+            // Support both cookie-based auth (primary) and Bearer token fallback
             ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
+        credentials: "include", // Send HTTP-only access_token cookie automatically
         body: JSON.stringify(payload),
         timeout: 10000,
         signal,
@@ -90,7 +92,6 @@ export async function geocodePincode(
             `&country=IN&format=json&limit=1`;
 
         let abortSignal = signal;
-        // Merge with a 4s timeout if no caller signal is provided or merge them
         if (!abortSignal) {
             abortSignal = AbortSignal.timeout(4000);
         }
