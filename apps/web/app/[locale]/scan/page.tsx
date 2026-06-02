@@ -595,12 +595,14 @@ export default function ScanPage() {
     const processVerificationResult = async (result: VerifyResult, fallbackBrandName?: string) => {
         if (!result.verified) {
             setVerifyResult(result);
+            setShowResult(true);
             return;
         }
         try {
             const medicineName = result.medicine.brand_name || fallbackBrandName;
             if (!medicineName) {
                 setVerifyResult(result);
+                setShowResult(true);
                 return;
             }
             const lasaRes = await checkLasaConflicts(medicineName);
@@ -608,12 +610,15 @@ export default function ScanPage() {
                 setLasaMatches(lasaRes.matches);
                 setPendingVerifyResult(result);
                 setShowLasaConfirmation(true);
+                setShowResult(true);
             } else {
                 setVerifyResult(result);
+                setShowResult(true);
             }
         } catch (error) {
             console.error("LASA check error:", error);
             setVerifyResult(result);
+            setShowResult(true);
         }
     };
 
@@ -1046,7 +1051,7 @@ export default function ScanPage() {
     };
 
     return (
-        <div className="relative flex min-h-screen flex-col overflow-x-clip bg-(--color-surface-page) font-sans text-(--color-text-primary)">
+        <div className="relative flex min-h-[calc(100vh-4rem)] flex-col overflow-x-clip bg-(--color-surface-page) font-sans text-(--color-text-primary)">
             <input
                 type="file"
                 id="medicine-upload"
@@ -1059,7 +1064,7 @@ export default function ScanPage() {
                 title="Scanner Mode"
                 subtitle="Position the Barcode"
                 backHref="/"
-                variant="dark"
+                variant="light"
             />
 
             <div className="relative flex flex-1 items-center justify-center">
@@ -1208,7 +1213,7 @@ export default function ScanPage() {
                         value={batchInput}
                         onChange={(e) => setBatchInput(e.target.value)}
                         placeholder="Enter batch number"
-                        className="flex-1 rounded-full border border-gray-300 bg-white px-4 py-3 text-center text-sm font-medium text-gray-900 placeholder-gray-500 focus:border-transparent focus:ring-2 focus:ring-emerald-500 focus:outline-none dark:border-white/20 dark:bg-white/10 dark:text-white dark:placeholder-white/40"
+                        className="flex-1 rounded-full border border-(--color-border-muted) bg-(--color-surface-muted) px-4 py-3 text-center text-sm font-medium text-(--color-text-primary) placeholder-(--color-text-muted) focus:border-transparent focus:ring-2 focus:ring-emerald-500 focus:outline-none dark:border-white/20 dark:bg-white/10 dark:text-white dark:placeholder-white/40"
                     />
                     <button
                         type="submit"
