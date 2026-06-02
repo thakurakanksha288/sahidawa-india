@@ -6,6 +6,7 @@ import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./utils/swagger";
 import { validateMlServiceConfig } from "./config/mlService";
 import cookieParser from "cookie-parser";
+import { doubleCsrf } from "csrf-csrf";
 
 // ── Environment Configuration ──────────────────────────────────────────────
 const rootEnvPath = path.resolve(__dirname, "../../../.env");
@@ -56,28 +57,34 @@ const app: Express = express();
 app.use(compression());
 
 // ── Global Middleware Configuration ───────────────────────────────────────
-// Parse cookies before routes or authorization handlers execute
 app.use(cookieParser());
 
-// ── CSRF Protection Middleware ──────────────────────────────────────────────
-const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
-    if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
-        return next();
-    }
+// ── CSRF Protection (double-submit cookie pattern) ─────────────────────────
+// csrf-csrf is recognized by CodeQL as a valid CSRF defense unlike custom header checks.
+const { 
+    doubleCsrfProtection, 
+    generateCsrfToken: generateToken // FIXED: Extract generateCsrfToken and alias it to generateToken
+} = doubleCsrf({
+    getSecret: () => process.env.CSRF_SECRET || "fallback-secret-change-in-production",
+    getSessionIdentifier: (req: Request) => {
+        return req.cookies?.access_token || "anonymous-session";
+    },
+    cookieName: "__Host-psifi.x-csrf-token",
+    cookieOptions: {
+        httpOnly: true,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+    },
+    size: 64,
+    ignoredMethods: ["GET", "HEAD", "OPTIONS"],
+});
+app.use(doubleCsrfProtection);
 
-    const csrfToken = req.headers["x-csrf-token"] || req.headers["x-requested-with"];
-    if (!csrfToken) {
-        return res.status(403).json({
-            success: false,
-            error: {
-                message: "Forbidden: Missing anti-CSRF protection header (X-CSRF-Token or X-Requested-With).",
-            },
-        });
-    }
-    next();
-};
-
-app.use(csrfProtection);
+// ── CSRF token endpoint — frontend fetches this once on load ───────────────
+app.get("/api/csrf-token", (req: Request, res: Response) => {
+    res.json({ csrfToken: generateToken(req, res) });
+});
 
 app.use(
     helmet({
@@ -115,7 +122,7 @@ app.get("/", (_req: Request, res: Response) => {
         version: process.env.npm_package_version || "0.1.0",
         status: "running",
         environment: process.env.NODE_ENV || "development",
-        endpoints: { health: "/health", docs: "/api/docs" },
+        endpoints: { health: "/health", docs: "/api/docs", csrfToken: "/api/csrf-token" },
         repository: "https://github.com/RatLoopz/sahidawa-india",
         timestamp: new Date().toISOString(),
     });
@@ -204,7 +211,6 @@ app.use(
     })
 );
 
-// Also expose raw spec as JSON for tooling (Postman, etc.)
 app.get("/api/docs.json", (_req: Request, res: Response) => {
     res.setHeader("Content-Type", "application/json");
     res.send(swaggerSpec);
