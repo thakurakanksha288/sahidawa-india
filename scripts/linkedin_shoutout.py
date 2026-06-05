@@ -77,8 +77,8 @@ def determine_tier(labels_str: str) -> tuple:
 def validate_pr_size(pr: dict) -> None:
     """
     Validates if the PR is substantial enough to warrant a shoutout.
-    - level:critical bypasses the check (critical bugs can be 1-line fixes).
-    - level:advanced requires at least 40 lines changed.
+    - level:critical requires at least 300 lines changed.
+    - level:advanced requires at least 200 lines changed.
     """
     labels = [lbl.strip().lower() for lbl in pr["labels"].split(",")]
     try:
@@ -86,17 +86,20 @@ def validate_pr_size(pr: dict) -> None:
     except ValueError:
         lines_changed = 0
 
-    if "level:critical" in labels:
-        print("⚡ PR is level:critical. Bypassing size check.")
-        return
+    is_critical = "level:critical" in labels
+    is_advanced = "level:advanced" in labels
 
-    if lines_changed < 40:
+    # If somehow both or neither are there, default to advanced threshold
+    threshold = 300 if is_critical else 200
+    tier_name = "Critical" if is_critical else "Advanced"
+
+    if lines_changed < threshold:
         print(f"🛑 REJECTED: PR only changed {lines_changed} lines.")
-        print("   Advanced shoutouts require at least 40 lines of code changes.")
+        print(f"   {tier_name} shoutouts require at least {threshold} lines of code changes.")
         print("   Exiting gracefully without triggering Make.com webhook or consuming AI credits.")
         sys.exit(0)
     
-    print(f"✅ PR Size Validation Passed. Lines changed: {lines_changed} (Threshold: 40)")
+    print(f"✅ PR Size Validation Passed. Lines changed: {lines_changed} (Threshold: {threshold})")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
