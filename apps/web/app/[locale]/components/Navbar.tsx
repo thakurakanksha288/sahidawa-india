@@ -291,12 +291,6 @@ export default function Navbar() {
                                         {/* Mobile Language & Theme Settings */}
                                         <div className="flex items-center justify-center gap-4 px-2 py-2">
                                             <LanguageSwitcher />
-                                        </div>
-
-                                        <div className="border-t border-slate-100 dark:border-slate-900" />
-
-                                        {/* Dark Mode Theme Settings */}
-                                        <div className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm font-semibold text-slate-500 dark:text-slate-400">
                                             <ThemeToggle />
                                         </div>
                                     </div>
