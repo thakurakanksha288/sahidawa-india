@@ -43,6 +43,7 @@
         "alerts": "اِطلاع",
         "pharmacy_map": "میڈیکل سٹور نَقشہِ",
         "my_reports": "مؠانؠ رِپورٹ",
+        "schedule": "Schedule",
         "home": "ہوم",
         "scans": "سکین",
         "map": "نَقشہِ",
@@ -642,39 +643,40 @@
         "nav_compare": "Compare Medicines",
         "nav_vaccine": "Vaccine Hub",
         "nav_reports": "My Reports",
+        "nav_schedule": "Medicine Schedule",
         "nav_profile": "My Profile"
     },
-  "medicineSafety": {
-    "guideTitle": "استعمال تہٕ حفاظت رہنمائی",
-    "noDosageInfo": "یِم عمر گروپ خٲطرٕ خوراکٕچ جانکاری دستیاب نَہ چھِ.",
-    "closeButton": "حفاظتی جانکاری بند کٔریو",
-    "tabs": {
-      "sideEffects": "ضمنی اثرات",
-      "dosage": "خوراک",
-      "dietaryIntake": "غذائی استعمال"
-    },
-    "sideEffects": {
-      "standardSymptoms": "عام علامات",
-      "severeRedFlags": "سنگین انتباہ — فوری طبی امداد حاصل کریں"
-    },
-    "dosage": {
-      "tabs": {
-        "kids": "بچے",
-        "adults": "بالغ",
-        "elderly": "معمر"
-      },
-      "doseLabel": "خوراک:",
-      "frequencyLabel": "تعدد:",
-      "notesHeading": "نوٹس",
-      "warningsHeading": "انتباہات"
-    },
-    "dietary": {
-      "tabs": {
-        "dietaryIntake": "غذائی استعمال"
-      },
-      "storageHeading": "ذخیرہ",
-      "pregnancyHeading": "حمل"
-    },
-    "disclaimer": "یہ معلومات تعلیمی مقصد کے لیے ہیں اور پیشہ ورانہ طبی مشورے کا متبادل نہیں ہیں۔"
-  }
+    "medicineSafety": {
+        "guideTitle": "استعمال تہٕ حفاظت رہنمائی",
+        "noDosageInfo": "یِم عمر گروپ خٲطرٕ خوراکٕچ جانکاری دستیاب نَہ چھِ.",
+        "closeButton": "حفاظتی جانکاری بند کٔریو",
+        "tabs": {
+            "sideEffects": "ضمنی اثرات",
+            "dosage": "خوراک",
+            "dietaryIntake": "غذائی استعمال"
+        },
+        "sideEffects": {
+            "standardSymptoms": "عام علامات",
+            "severeRedFlags": "سنگین انتباہ — فوری طبی امداد حاصل کریں"
+        },
+        "dosage": {
+            "tabs": {
+                "kids": "بچے",
+                "adults": "بالغ",
+                "elderly": "معمر"
+            },
+            "doseLabel": "خوراک:",
+            "frequencyLabel": "تعدد:",
+            "notesHeading": "نوٹس",
+            "warningsHeading": "انتباہات"
+        },
+        "dietary": {
+            "tabs": {
+                "dietaryIntake": "غذائی استعمال"
+            },
+            "storageHeading": "ذخیرہ",
+            "pregnancyHeading": "حمل"
+        },
+        "disclaimer": "یہ معلومات تعلیمی مقصد کے لیے ہیں اور پیشہ ورانہ طبی مشورے کا متبادل نہیں ہیں۔"
+    }
 }

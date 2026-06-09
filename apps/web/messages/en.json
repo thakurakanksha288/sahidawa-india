@@ -46,6 +46,7 @@
         "alerts": "Alerts",
         "pharmacy_map": "Pharmacy Map",
         "my_reports": "My Reports",
+        "schedule": "Schedule",
         "home": "Home",
         "scans": "Scans",
         "map": "Map",
@@ -649,6 +650,7 @@
         "nav_compare": "Compare Medicines",
         "nav_vaccine": "Vaccine Hub",
         "nav_reports": "My Reports",
+        "nav_schedule": "Medicine Schedule",
         "nav_profile": "My Profile"
     },
     "medicineSafety": {
