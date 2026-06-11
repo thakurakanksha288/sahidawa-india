@@ -62,6 +62,7 @@ export default function MapView() {
     const [error, setError] = useState<string | null>(null);
 
     const abortControllerRef = useRef<AbortController | null>(null);
+    const decodeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
     useEffect(() => {
         let mounted = true;
@@ -150,19 +151,26 @@ export default function MapView() {
     function decodeHtmlEntities(input: string | null | undefined) {
         if (!input) return "";
         try {
-            const txt = document.createElement("textarea");
-            txt.innerHTML = input;
-            return txt.value;
+            if (!decodeTextareaRef.current) {
+                decodeTextareaRef.current = document.createElement("textarea");
+            }
+            decodeTextareaRef.current.innerHTML = input;
+            return decodeTextareaRef.current.value;
         } catch {
             return input;
         }
     }
 
-    if (!userLocation || loading)
+    if (!userLocation || loading || error)
         return (
             <div className="p-8 text-center">
-                {loading ? <span>Loading map…</span> : <span>Initializing map…</span>}
-                {error && <div className="text-sm text-red-600">{error}</div>}
+                {error ? (
+                    <div className="text-sm text-red-600">{error}</div>
+                ) : loading ? (
+                    <span>Loading map…</span>
+                ) : (
+                    <span>Initializing map…</span>
+                )}
             </div>
         );
 
