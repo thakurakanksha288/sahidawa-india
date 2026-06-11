@@ -68,6 +68,9 @@ app.set("trust proxy", 1); // Trust first proxy (Nginx) — fixes req.ip for rat
 
 app.use(compression());
 
+// Security: restrict CORS to known origins and allow credentials for secure cookies
+app.use(cors(createCorsOptions()));
+
 // ── Global Middleware Configuration ───────────────────────────────────────
 app.use(cookieParser());
 
@@ -111,9 +114,6 @@ app.use(
         },
     })
 );
-
-// Security: restrict CORS to known origins and allow credentials for secure cookies
-app.use(cors(createCorsOptions()));
 
 app.use(express.json({ limit: "1mb" }));
 
